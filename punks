@@ -1,0 +1,73 @@
+```{r}
+## Setup environment
+## Add packages
+library(readxl)
+library(tidyverse)
+library(zoo)
+library(dplyr)
+library(lubridate)
+
+## Read data
+cp <- read_excel("C:/Users/brad.ohara/Downloads/cryptopunks_01-14-2022_13-55-22_downloaded.xlsx", sheet = "cryptopunks_01-14-2022_13-55-22")
+cp2 <- read_excel("C:/Users/brad.ohara/Downloads/cryptopunks_01-14-2022_13-55-22_downloaded.xlsx", sheet = "cryptopunks_01-14-2022_13-55-22")
+```
+
+
+```{r}
+## Transformations
+
+## Transform date
+cp <- cp %>% mutate(day=lubridate::parse_date_time(day, "ymd"))
+cp2 <- cp2 %>% mutate(day=lubridate::parse_date_time(day, "ymd"))
+
+## 30MA on usd_price
+myfunc <- function(x){
+  thirty_days <- as.Date(x - ddays(30))
+  
+  cp <-
+    cp %>%
+    filter(day <= x) %>%
+    filter(day >= thirty_days) %>%
+    filter(usd_price <= quantile(usd_price, probs = 0.75)) %>% 
+    summarize(thirty_days_avg = mean(usd_price))
+    return(cp$thirty_days_avg)
+}
+cp$thirty_days_avg <- sapply(cp$day, simplify = TRUE,  FUN = myfunc)
+
+## 30MA on eth_price. I included both MA's separately as it was unclear to me which (or both) was the intended output.
+
+myfunc2 <- function(x){
+  thirty_days2 <- as.Date(x - ddays(30))
+  
+  cp2 <-
+    cp2 %>%
+    filter(day <= x) %>%
+    filter(day >= thirty_days2) %>%
+    filter(eth_price <= quantile(eth_price, probs = 0.75)) %>% 
+    summarize(thirty_days_avg2 = mean(eth_price))
+    return(cp2$thirty_days_avg2)
+}
+cp2$thirty_days_avg2 <- sapply(cp2$day, simplify = TRUE,  FUN = myfunc2)
+
+
+```
+
+
+```{r}
+## Run (and re-run) this chunk as the calculator
+## User input
+date <- readline(prompt="In YYYY-MM-DD format, enter date: ")
+
+## Add Unfilter for subsequent date requests
+cp3<-cp
+cp4<-cp2
+
+cp3 <- cp3 %>% filter(day == as.Date(date))
+cp4 <- cp4 %>% filter(day == as.Date(date))
+
+print(paste("The collateral value is", round(mean(cp3$thirty_days_avg), digits=2), "USD, and", round(mean(cp4$thirty_days_avg2), digits=2),"ETH on", date, "."))
+```
+
+
+
+
